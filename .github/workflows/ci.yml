@@ -1,0 +1,118 @@
+name: CICD Compliance Scans
+
+on:
+  workflow_dispatch:
+  push:
+
+env:
+  CELINE_ACCESS_TOKEN:  ${{ secrets.CELINE_ACCESS_TOKEN }}
+  CELINE_CTX_ADDRESS:   ${{ secrets.celine_ctx_address }}
+  ARTIFACTS_PATH:       ${{ github.workspace }}
+  ARTIFACTS_ZIP:        ${{ github.run_id }}_artifacts.zip
+  ARTIFACTORY_URL:      "https://ubit-artifactory-or.intel.com/artifactory"
+
+jobs:
+  # Set up initial context
+  # https://probable-waffle-672e6f4d.pages.github.io/set-context/
+  set_context:
+    runs-on: [ celine ]
+
+    outputs:
+      specific_commit_sha: ${{ steps.get_commit.outputs.commit_sha }}
+
+    steps:
+      - id: get_commit
+        run: |
+          if [ ${{ github.event_name }}  == 'pull_request' ]; then
+          echo "::set-output name=commit_sha::${{ github.event.pull_request.head.sha }}"
+          else
+          echo "::set-output name=commit_sha::${{ github.sha }}"
+          fi
+      - uses: intel-sandbox/frameworks.devops.ci.celine.actions.set-context@v1
+
+  archive:
+    needs: [ set_context ]
+    runs-on: [ celine ]
+
+    outputs:
+      artifacts_url: ${{ steps.upload.outputs.artifacts_url }}
+      artifact_name: ${{ steps.prepare.outputs.artifact_name }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create artifacts zip
+        id: prepare
+        run: |
+          ls -lia "$ARTIFACTS_PATH"
+          zip -r $ARTIFACTS_ZIP "$ARTIFACTS_PATH"
+          echo "::set-output name=artifact_name::$ARTIFACTS_ZIP"
+      - name: Upload to artifactory
+        id: upload
+        uses: intel-sandbox/frameworks.devops.ci.celine.actions.artifactory-upload@v1
+        with:
+          url:      ${{ env.ARTIFACTORY_URL }}
+          project:  celine-or-local
+          path:     ${{ env.ARTIFACTS_ZIP }}
+          target:   artifacts/${{ env.ARTIFACTS_ZIP }}
+          retention_days: 30
+          token:    ${{ secrets.artifactory_api_token }}
+
+      - uses: intel-sandbox/frameworks.devops.ci.celine.actions.set-context@v1
+        with:
+          user_payload: '{"artifact_name": "${{ steps.prepare.outputs.artifact_name }}", "artifact_url": "${{ steps.upload.outputs.artifacts_url }}"}'
+
+      - name: Cleanup workspace
+        if: ${{ always() }}
+        run: rm -rf ${GITHUB_WORKSPACE}/*
+
+  compliance:
+    needs: [ set_context, archive ]
+    runs-on: [ celine ]
+    outputs:
+      job_id: ${{ steps.run_abi.outputs.number }}
+    env:
+      SDLE_UPLOAD: false
+
+    steps:
+      - name: Upload to SDLE if release
+        id: sdle_upload
+        if: github.event_name == 'release'
+        run: echo "SDLE_UPLOAD=true" >> $GITHUB_ENV
+
+      - name: Get short commit SHA
+        # This is to beautify the Klocwork report name
+        id: get_short_commit_sha
+        run: |
+          short_commit=$(git rev-parse --short ${{ needs.set_context.outputs.specific_commit_sha }})
+          echo "SHORT_COMMIT_SHA=$short_commit" >> $GITHUB_ENV
+
+      - uses: intel-sandbox/frameworks.devops.ci.celine.actions.abi-central@v1
+        id: run_abi
+        with:
+          jenkins_user:       ${{ secrets.jenkins_user }}
+          jenkins_api_token:  ${{ secrets.jenkins_api_token }}
+          project_name:       "Triton"
+          build_config_path:  ".celine/BuildConfig.json"
+          project_branch:     ${{ needs.set_context.outputs.specific_commit_sha }}
+          artifacts_url:      ${{ needs.archive.outputs.artifacts_url }}
+          artifact_name:      ${{ env.ARTIFACTS_ZIP }}
+          submit_sdle:        ${{ env.SDLE_UPLOAD }}
+
+  # Sends email with report
+  notify:
+    if: ${{ always() }}
+    needs: [ compliance ]
+    runs-on: [ celine ]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: "Set user context"
+        uses: intel-sandbox/frameworks.devops.ci.celine.actions.set-context@v1
+        with:
+          context: '{"wiki":"frameworks.devops.ci.celine.celine.wiki","project_name":"Triton","status":"${{ needs.compliance.result }}"}'
+
+      - name: Create report
+        uses: intel-sandbox/frameworks.devops.ci.celine.actions.reporting@v1
+        with:
+          recipients: "sergey.nesterov@intel.com, mikolaj.zyczynski@intel.com"

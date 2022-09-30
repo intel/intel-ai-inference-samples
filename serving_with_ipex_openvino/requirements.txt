@@ -1,0 +1,8 @@
+torch==1.12.1
+transformers==4.22.1
+tritonclient[all]==2.25.0
+intel_extension_for_pytorch==1.12.300
+intel-openmp==2022.1.0
+openvino-dev==2022.2.0
+configargparse==1.5.3
+numpy==1.22.3
