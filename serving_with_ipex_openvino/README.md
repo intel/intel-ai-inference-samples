@@ -1,7 +1,7 @@
-# AI Inference samples 
+# Serving BERT models with IPEX, OpenVINO and Triton Server
 
 ## Description
-AI Inference samples provide example code to integrate Intel® Extension for PyTorch (IPEX) and Intel® Distribution of OpenVINO™ toolkit with Triton Inference Server framework. This project provides custom python backend for IPEX and Intel® Distribution of OpenVINO™ toolkit and additional dynamic batching algorithm to improve the performance. This code can be used as perfromance benchmark for Bert-Base and Bert-Large models.
+This sample provide code to integrate Intel® Extension for PyTorch (IPEX) and Intel® Distribution of OpenVINO™ toolkit with Triton Inference Server framework. This project provides custom python backend for IPEX and Intel® Distribution of OpenVINO™ toolkit and additional dynamic batching algorithm to improve the performance. This code can be used as perfromance benchmark for Bert-Base and Bert-Large models.
 
 ![graph](./graph.jpg)
 
