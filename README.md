@@ -4,7 +4,7 @@
 Intel® AI Inference Samples provide example code for deploying optimized inference in Intel platforms. 
 
 ## Samples List
-- [Serving optimized BERT models with Intel® Extension for PyTorch (IPEX) and Intel® Distribution of OpenVINO™ toolkit with Triton Inference Server framework](./serving_with_ipex_openvino)
+- [Serving optimized BERT models with Intel® Extension for PyTorch (IPEX) and Intel® Distribution of OpenVINO™ toolkit with Triton Inference Server framework](./serving_with_ipex_openvino_triton)
 
 ## Support
 Please submit your questions, feature requests, and bug reports on the GitHub issues page.
