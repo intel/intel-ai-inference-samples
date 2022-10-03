@@ -1,7 +1,7 @@
 # Serving BERT models with IPEX, OpenVINO and Triton Server
 
 ## Description
-This sample provide code to integrate Intel® Extension for PyTorch (IPEX) and Intel® Distribution of OpenVINO™ toolkit with Triton Inference Server framework. This project provides custom python backend for IPEX and Intel® Distribution of OpenVINO™ toolkit and additional dynamic batching algorithm to improve the performance. This code can be used as perfromance benchmark for Bert-Base and Bert-Large models.
+This sample provide code to integrate Intel® Extension for PyTorch (IPEX) and Intel® Distribution of OpenVINO™ toolkit with Triton Inference Server framework. This project provides custom python backend for IPEX and Intel® Distribution of OpenVINO™ toolkit and additional dynamic batching algorithm to improve the performance. This code can be used as performance benchmark for Bert-Base and Bert-Large models.
 
 ![graph](./graph.jpg)
 
@@ -9,7 +9,7 @@ This sample provide code to integrate Intel® Extension for PyTorch (IPEX) and I
 Make sure that Docker is installed on both host and client instance.
 In case of running on two separate instances edit config.properties and provide required variables.
 ## Supported models
-Cuttently AI Inference samples support following Bert models finetunned on Squad dataset:
+Currently AI Inference samples support following Bert models finetuned on Squad dataset:
 - bert_base        - PyTorch+IPEX [Bert Base uncased](https://huggingface.co/csarron/bert-base-uncased-squad-v1 "Bert Base uncased")
 - bert_large        - PyTorch+IPEX [Bert Large uncased](https://huggingface.co/bert-large-uncased-whole-word-masking-finetuned-squad "Bert Large uncased")
 - bert_base_ov  - Intel® Distribution of OpenVINO™ toolkit  [Bert Base uncased](https://huggingface.co/csarron/bert-base-uncased-squad-v1 "Bert Base uncased")
@@ -55,11 +55,10 @@ Downloading and loading models take some time, so please wait until you run run_
 Model loading progress can be tracked by following Triton Server Host docker container logs.
 
 ## Support
-Please submit your questions, feature requests, and bug reports on the GitHub issues page.
-[LINK TBD]
+Please submit your questions, feature requests, and bug reports on the [GitHub issues page](https://github.com/intel/intel-ai-inference-samples/issues).
 
 ## License 
-AI Inference samples project is licensed under Apache License Version 2.0. Refer to the "LICENSE" file for the full license text and copyright notice.
+AI Inference samples project is licensed under Apache License Version 2.0. Refer to the [LICENSE](../LICENSE) file for the full license text and copyright notice.
 
 This distribution includes third party software governed by separate license terms.
 
