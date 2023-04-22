@@ -4,14 +4,14 @@
 Intel® AI Inference Samples provide example code for deploying optimized inference in Intel platforms. 
 
 ## Samples List
-- [Serving optimized BERT models with Intel® Extension for PyTorch (IPEX) and Intel® Distribution of OpenVINO™ toolkit with Triton Inference Server framework](./serving_with_ipex_openvino_triton)
+- [Serving optimized BERT models with Intel® Extension for PyTorch (IPEX), Intel® Distribution of OpenVINO™ toolkit and Triton Inference Server framework](./serving_with_ipex_openvino_triton)
 
 ## Support
 Please submit your questions, feature requests, and bug reports on the GitHub issues page.
 [LINK TBD]
 
 ## License 
-Intel® AI Inference Samples is licensed under Apache License Version 2.0. Refer to the [LICENSE](LICENSE) file for the full license text and copyright notice.
+Intel® AI Inference Samples is licensed under Apache License Version 2.0. Refer to the [LICENSE](./LICENSE) file for the full license text and copyright notice.
 
 This distribution includes third party software governed by separate license terms.
 
