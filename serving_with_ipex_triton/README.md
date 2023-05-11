@@ -5,6 +5,7 @@ This sample provide code to integrate Intel® Extension for PyTorch (IPEX) with 
 
 ## Preparation
 Make sure that Docker is installed on both host and client instance.
+Sample images from ImageNet dataset. 
 
 ## Supported models
 Currently AI Inference samples support following Bert models finetuned on Squad dataset:
@@ -13,6 +14,7 @@ Currently AI Inference samples support following Bert models finetuned on Squad 
 ## Possible run scenarios
 AI Inference samples allow user to run inference on localhost or on remote Triton Server Host. 
 By default config.properties is filled with localhost run option. 
+
 ### Execution on localhost
 To build, start Docker containers, run tests, stop and do cleanup on localhost execute scripts in following order:
 
@@ -20,10 +22,7 @@ To build, start Docker containers, run tests, stop and do cleanup on localhost e
 
 `$ bash start.sh`  - runs Docker containers for Triton Server Client and Host for model specified in config.properties
 
-`$ python3  client_imagenet.py`  - sends requests to Triton Server Host for model specified. 
-
-### Execution on two separate instances
-
+`$ python3  client_imagenet.py`  - sends requests to Triton Server Host for model specified. This file uses ImagesNet images for inference. 
 
 ## Additional info
 Downloading and loading models take some time, so please wait until you run run_test.sh script.
