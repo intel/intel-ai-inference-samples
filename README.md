@@ -5,6 +5,7 @@ Intel® AI Inference Samples provide example code for deploying optimized infere
 
 ## Samples List
 - [Serving optimized BERT models with Intel® Extension for PyTorch (IPEX), Intel® Distribution of OpenVINO™ toolkit and Triton Inference Server framework](./serving_with_ipex_openvino_triton)
+- [Optimized Large Language Model (LLM) GPT-j with Intel® Extension for PyTorch (IPEX)](./gpt-j_with_ipex/)
 
 ## Support
 Please submit your questions, feature requests, and bug reports on the [GitHub issues page](https://github.com/intel/intel-ai-inference-samples/issues).
