@@ -7,20 +7,14 @@ print_help() {
     echo ""
     echo "Usage: $0 [arg]"
     echo ""
-    echo "   This script starts Docker container for host, client or localhost scenario."
-    echo "   If no arguments are specified script will start Docker containers for localhost."
-    echo ""
-    echo "   Available arguments:"
-    echo "   client              - starts client container."
-    echo "   host                - starts host container."
-    echo "   localhost (default) - starts client and host containers on the same instance."
+    echo "   This script starts triton Docker container on a host machine."
     echo ""
     exit 2
 }
 
 start_host() {
     # Prepare Triton Host Server backend
-	model_name="densenet"
+    model_name="densenet"
     backend_dir="$(pwd)/backend/${model_name}" 
     [ ! -d "${backend_dir}" ] && mkdir -p "$(pwd)/backend/" && cp -fr "$(pwd)/model_repository/densenet" "${backend_dir}" && cp "$(pwd)/model_repository/densenet/config.pbtxt" "${backend_dir}"
     

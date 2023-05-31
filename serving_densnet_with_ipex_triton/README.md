@@ -18,14 +18,14 @@ By default config.properties is filled with localhost run option.
 ### Execution on localhost
 To build, start Docker containers, run tests, stop and do cleanup on localhost execute scripts in following order:
 
-`$ docker build -t tritonserver_custom -f Dockerfile.compose .`  - builds Docker image for Triton Server
+`$ docker build -t tritonserver_custom -f Dockerfile.ipex .`  - builds Docker image for Triton Server.
 
-`$ bash start.sh`  - runs Docker containers for Triton Server Client and Host for model specified in config.properties
+`$ bash start.sh`  - runs Docker containers for Triton Server Host.
 
-`$ python3  client_imagenet.py`  - sends requests to Triton Server Host for model specified. This file uses ImagesNet images for inference. 
+`$ python3 client_imagenet.py --dataset /home/ubuntu/ImageNet/imagenet_images `  - sends requests to Triton Server Host for DenseNet model. This file uses ImagesNet images for inference. 
 
 ## Additional info
-Downloading and loading models take some time, so please wait until you run run_test.sh script.
+Downloading and loading models take some time, so please wait until you run client_imagenet.py.
 Model loading progress can be tracked by following Triton Server Host docker container logs.
 
 ## Support
@@ -37,7 +37,7 @@ AI Inference samples project is licensed under Apache License Version 2.0. Refer
 This distribution includes third party software governed by separate license terms.
 
 3-clause BSD license:
-- [model.py](./model_utils/bert_common/1/model.py) -  for PyTorch (IPEX)
+- [model.py](./model_repository/densenet/1/model.py) -  for PyTorch (IPEX)
 
 This third party software, even if included with the distribution of the Intel software, may be governed by separate license terms, including without limitation, third party license terms, other Intel software license terms, and open source software license terms. These separate license terms govern your use of the third party programs as set forth in the [THIRD-PARTY-PROGRAMS](./THIRD-PARTY-PROGRAMS) file.
 

@@ -5,6 +5,14 @@ import tritonclient.http as httpclient
 from tritonclient.utils import triton_to_np_dtype
 import os
 import time
+import argparse
+
+argParser = argparse.ArgumentParser()
+argParser.add_argument("--dataset", required = True, help="Path to IMAGENET dataset")
+
+directory = argParser.parse_args()
+directory = directory.dataset
+print("Dataset directory = %s" % directory)
 
 # preprocessing function
 def image_preprocess(img_path="img2.jpg"):
@@ -17,7 +25,6 @@ def image_preprocess(img_path="img2.jpg"):
     ])
     return preprocess(img).numpy()
 
-directory = '/home/ubuntu/ImageNet/imagenet_images'
 filelist = []
 
 for root, dirs, files in os.walk(directory):
