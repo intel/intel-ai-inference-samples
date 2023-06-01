@@ -1,7 +1,7 @@
 ## Serving DenseNet models with IPEX® (w/o python backend) on Triton Server
 
 ## Description
-This readme provides a methodology to run Intel® Extension for PyTorch (IPEX) optimized model with out writting python backend (model.py) script for triton server.
+This readme provides a methodology to run Intel® Extension for PyTorch (IPEX) optimized model without writing python backend (model.py) script for triton server.
 
 ## Preparation
 - Docker installed on host instance.
@@ -23,7 +23,7 @@ We will download the LibTorch 2.0.0 (C++\CPU cxx11 ABI) package as follows
 `$ uzip libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip` - unpack the source
 
 #### 2 Create IPEX .so files for triton
-[Visit](https://intel.github.io/intel-extension-for-pytorch/latest/tutorials/installation.html#install-via-source-compilation) and copy the link for your correspinding cxx11 ABI PyTorch version (2.0.0) -
+[Visit](https://intel.github.io/intel-extension-for-pytorch/latest/tutorials/installation.html#install-via-source-compilation) and copy the link for your corresponding cxx11 ABI PyTorch version (2.0.0) -
 
 `$ wget https://intel-extension-for-pytorch.s3.amazonaws.com/libipex/cpu/libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run`
 
