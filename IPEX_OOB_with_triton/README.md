@@ -35,9 +35,9 @@ We will download the LibTorch 2.0.0 (C++\CPU cxx11 ABI) package as follows
   
 #### 3 Create a docker container and copy files 
   
-`$ docker run -it -p8000:8000 -p8001:8001 -p8002:8002 -v ${PWD}/model_repository:/models nvcr.io/nvidia/tritonserver:23.05-py3`
+`$ docker run -it -p8000:8000 -p8001:8001 -p8002:8002 --name ipex_triton -v ${PWD}/model_repository:/models nvcr.io/nvidia/tritonserver:23.05-py3`
 
-`$ docker cp <libtorch_path>/lib/libintel-ext-pt-cpu.so <Triton container>:/opt/tritonserver/backends/pytorch/` - on a separate terminal
+`$ docker cp libtorch/lib/libintel-ext-pt-cpu.so ipex_triton:/opt/tritonserver/backends/pytorch/` - on a separate terminal
  
 `$ cd backends/pytorch/ ; LD_PRELOAD="$(pwd)/libintel-ext-pt-cpu.so" tritonserver --model-repository=/models`
 
