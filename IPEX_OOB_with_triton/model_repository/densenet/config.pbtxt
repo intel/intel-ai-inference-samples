@@ -1,5 +1,6 @@
+name: "densenet"
+platform: "pytorch_libtorch"
 max_batch_size: 0
-backend: "python"
 input[
 {
     name: "input__0"
@@ -16,29 +17,3 @@ output:[
     reshape { shape: [ 1, 1000 ] }
 }
 ]
-
-instance_group [
-  {
-    count: 1
-    kind: KIND_CPU
-  }
-]
-
-parameters [
-  {
-    key: "origin"
-    value: {string_value: 'densenet'}
-  },
-  {
-    # Batch sizes to split (e.g. "[1,2,4,8]"). Default: "[]" if "dynamic_shape" else "[1]"
-    # Set to "[]" if no split is needed. 
-    key: "batches"
-    value: {string_value: "[1]"}
-  },
-  {
-    # Dynamic shape support. Default: "true"
-    # If set to "false" - INPUT0 shape to be defined
-    key: "dynamic_shape"
-    value: {string_value: "true"}
-  }
-] 
