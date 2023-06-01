@@ -18,9 +18,9 @@ By default config.properties is filled with localhost run option.
 ### Execution on localhost
 
 #### 1 Download the LibTorch .zip file for the PyTorch
-[Here](https://docs.nvidia.com/deeplearning/frameworks/support-matrix/index.html#framework-matrix-2023) is the list of triton containers and their corresponding framework versions.
+This example uses triton container 23.05 which uses PyTorch version 2.0.0. [Here](https://docs.nvidia.com/deeplearning/frameworks/support-matrix/index.html#framework-matrix-2023) is the list of triton containers and their corresponding built-in framework versions.
 
-This example uses triton container 23.05 which uses PyTorch version 2.0.0. We will download the CPU only cxx11 ABI package for PyTorch 2.0.0 as follows 
+We will download the LibTorch 2.0.0 (C++\CPU cxx11 ABI) package as follows 
 
 `$ wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip`
 
