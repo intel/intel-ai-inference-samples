@@ -49,11 +49,6 @@ Please submit your questions, feature requests, and bug reports on the [GitHub 
 ## License 
 AI Inference samples project is licensed under Apache License Version 2.0. Refer to the [LICENSE](../LICENSE) file for the full license text and copyright notice.
 
-This distribution includes third party software governed by separate license terms.
-
-3-clause BSD license:
-- [model.py](./model_repository/densenet/1/model.py) -  for PyTorch (IPEX)
-
 This third party software, even if included with the distribution of the Intel software, may be governed by separate license terms, including without limitation, third party license terms, other Intel software license terms, and open source software license terms. These separate license terms govern your use of the third party programs as set forth in the [THIRD-PARTY-PROGRAMS](./THIRD-PARTY-PROGRAMS) file.
 
 ## Trademark Information
