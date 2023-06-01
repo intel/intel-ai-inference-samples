@@ -22,7 +22,7 @@ By default config.properties is filled with localhost run option.
 
 This example uses triton container 23.05 which uses PyTorch version 2.0.0. We will download the CPU only cxx11 ABI package for PyTorch 2.0.0 as follows 
 
-`$ wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip'
+`$ wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip`
 
 `$ uzip libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip` - unpack the source
 
@@ -31,11 +31,11 @@ This example uses triton container 23.05 which uses PyTorch version 2.0.0. We wi
 
 `$ wget https://intel-extension-for-pytorch.s3.amazonaws.com/libipex/cpu/libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run`
 
-`$ bash libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run install libtorch/'  - this will create libintel-ext-pt-cpu.so at libtorch/lib
+`$ bash libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run install libtorch/`  - this will create libintel-ext-pt-cpu.so at libtorch/lib
   
 #### 3 Create a docker container and copy files 
   
-`$ docker run -it -p8000:8000 -p8001:8001 -p8002:8002 -v ${PWD}/model_repository:/models nvcr.io/nvidia/tritonserver:23.05-py3'
+`$ docker run -it -p8000:8000 -p8001:8001 -p8002:8002 -v ${PWD}/model_repository:/models nvcr.io/nvidia/tritonserver:23.05-py3`
 
 `$ docker cp <libtorch_path>/lib/libintel-ext-pt-cpu.so <Triton container>:/opt/tritonserver/backends/pytorch/`
  
