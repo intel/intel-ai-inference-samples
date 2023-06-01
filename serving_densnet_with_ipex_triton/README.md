@@ -8,7 +8,7 @@ Make sure that Docker is installed on both host and client instance.
 Sample images from ImageNet dataset. 
 
 ## Supported models
-Currently AI Inference samples support following Bert models finetuned on Squad dataset:
+Currently AI Inference samples support following model:
 - DenseNet121        - PyTorch+IPEX [DenseNet121](https://pytorch.org/hub/pytorch_vision_densenet/ "DenseNet121")
 
 ## Possible run scenarios
