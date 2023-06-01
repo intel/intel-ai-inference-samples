@@ -4,11 +4,9 @@
 This readme provides a methodology to run Intel® Extension for PyTorch (IPEX) optimized model with out writting python backend (model.py) script for triton server.
 
 ## Preparation
-Docker installed on host instance.
-
-Sample images from ImageNet dataset. 
-
-Place IPEX optimized model at IPEX_OOB_with_triton/model_repository/densenet/1/
+- Docker installed on host instance.
+- Sample images from ImageNet dataset. 
+- Place IPEX optimized model at IPEX_OOB_with_triton/model_repository/densenet/1/
 
 ## Supported models
 - DenseNet121        - PyTorch+IPEX [DenseNet121](https://pytorch.org/hub/pytorch_vision_densenet/ "DenseNet121")
@@ -41,7 +39,6 @@ We will download the LibTorch 2.0.0 (C++\CPU cxx11 ABI) package as follows
 #### 4 Run inference   
 `$ python3 client_imagenet.py --dataset /home/ubuntu/ImageNet/imagenet_images `  - sends requests to Triton Server Host for DenseNet model. This file uses ImagesNet images for inference. 
 
-  
 ## Additional info
 Downloading and loading models take some time, so please wait until you run client_imagenet.py.
 Model loading progress can be tracked by following Triton Server Host docker container logs.
