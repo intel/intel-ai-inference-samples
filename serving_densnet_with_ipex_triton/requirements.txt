@@ -1,0 +1,6 @@
+torch==1.13.1 -i https://download.pytorch.org/whl/cpu
+torchvision==0.14.1 --index-url https://download.pytorch.org/whl/cpu
+tritonclient[all]==2.23.0
+intel_extension_for_pytorch==1.13.0
+configargparse==1.5.3
+numpy==1.23.4
