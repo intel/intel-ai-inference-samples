@@ -39,7 +39,7 @@ We will download the LibTorch 2.0.0 (C++\CPU cxx11 ABI) package as follows
 
 `$ docker cp libtorch/lib/libintel-ext-pt-cpu.so ipex_triton:/opt/tritonserver/backends/pytorch/` - on a separate terminal
  
-`$ cd backends/pytorch/ ; LD_PRELOAD="$(pwd)/libintel-ext-pt-cpu.so" tritonserver --model-repository=/models`
+`$ cd backends/pytorch/ ; LD_PRELOAD="$(pwd)/libintel-ext-pt-cpu.so" tritonserver --model-repository=/models` - on the container
 
 #### 4 Run inference 
   
