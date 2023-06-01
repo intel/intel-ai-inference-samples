@@ -13,7 +13,7 @@ This readme provides a methodology to run Intel® Extension for PyTorch (IPEX) o
 
 ### Execution on localhost
 
-#### 1 Download the LibTorch .zip file for the PyTorch
+#### 1 Download the LibTorch .zip file
 This example uses triton container 23.05 which uses PyTorch version 2.0.0. [Here](https://docs.nvidia.com/deeplearning/frameworks/support-matrix/index.html#framework-matrix-2023) is the list of triton containers and their corresponding built-in framework versions.
 
 We will download the LibTorch 2.0.0 (C++\CPU cxx11 ABI) package as follows 
