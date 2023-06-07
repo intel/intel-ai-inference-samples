@@ -20,7 +20,7 @@ We will download the LibTorch 2.0.0 (C++\CPU cxx11 ABI) package as follows
 
 `$ wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip`
 
-`$ uzip libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip` - unpack the source
+`$ unzip libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip` - unpack the source
 
 #### 2 Create IPEX .so files for triton
 [Visit](https://intel.github.io/intel-extension-for-pytorch/latest/tutorials/installation.html#install-via-source-compilation) and copy the link for your corresponding cxx11 ABI PyTorch version (2.0.0) -
