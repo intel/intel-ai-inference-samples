@@ -29,14 +29,17 @@ We will download the LibTorch 2.0.0 (C++\CPU cxx11 ABI) package as follows
 
 `$ bash libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run install libtorch/`  - this will create libintel-ext-pt-cpu.so at libtorch/lib
   
-#### 3 Create a docker container and copy files 
+#### 3 Copy the IPEX model at desired directory 
+Place the ipex.optimize() saved model at the /model_repository
+
+#### 4 Create a docker container and copy files 
 `$ docker run -it -p8000:8000 -p8001:8001 -p8002:8002 --name ipex_triton -v ${PWD}/model_repository:/models nvcr.io/nvidia/tritonserver:23.05-py3`
 
 `$ docker cp libtorch/lib/libintel-ext-pt-cpu.so ipex_triton:/opt/tritonserver/backends/pytorch/` - on a separate terminal
  
 `$ cd backends/pytorch/ ; LD_PRELOAD="$(pwd)/libintel-ext-pt-cpu.so" tritonserver --model-repository=/models` - on the container
 
-#### 4 Run inference   
+#### 5 Run inference   
 `$ python3 client_imagenet.py --dataset /home/ubuntu/ImageNet/imagenet_images `  - sends requests to Triton Server Host for DenseNet model. This file uses ImagesNet images for inference. 
 
 ## Additional info
