@@ -10,14 +10,26 @@ RUN sed -i '50d' /etc/apt/sources.list && \
                        libjemalloc-dev && \
     apt-get clean
 
-# DOWNLOAD IPEX
-# The versions of the IPEX C++ library can be found here:
-#   https://intel.github.io/intel-extension-for-pytorch/cpu/latest/tutorials/installation.html#install-c-sdk
+# Step 1 Download the LibTorch .zip file
+# This example uses triton container 23.05 which uses PyTorch version 2.0.0. 
+# List of Triton server and corresponding FWs https://docs.nvidia.com/deeplearning/frameworks/support-matrix/index.html#framework-matrix-2023
 # The version of IPEX needs to align with the version of PyTorch on
 # the tritonserver Docker image that you're using. For example,
 # the Docker image nvcr.io/nvidia/tritonserver:23.05-py3 comes with PyTorch 2.0.0,
-# as found here:
-# https://docs.nvidia.com/deeplearning/frameworks/support-matrix/index.html#framework-matrix-2023
+#   wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip 
+#   unzip libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip
+
+# Step 2 DOWNLOAD IPEX
+# The versions of the IPEX C++ library can be found here:
+#   https://intel.github.io/intel-extension-for-pytorch/cpu/latest/tutorials/installation.html#install-c-sdk
+#    wget https://intel-extension-for-pytorch.s3.amazonaws.com/libipex/cpu/libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run
+#    bash libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run install libtorch/
+
+# step 3 Create a docker container and copy files 
+# docker run -it -p8000:8000 -p8001:8001 -p8002:8002 --name ipex_triton -v ${PWD}/model_repository:/models nvcr.io/nvidia/tritonserver:23.05-py3`
+# docker cp libtorch/lib/libintel-ext-pt-cpu.so ipex_triton:/opt/tritonserver/backends/pytorch/` - on a separate terminal
+# cd backends/pytorch/ ; LD_PRELOAD="$(pwd)/libintel-ext-pt-cpu.so" tritonserver --model-repository=/models` - on the container
+
 RUN BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" && \
 	curl https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip -o ${BASEDIR}/libtorch.zip && \
 	unzip -o libtorch.zip -d ${BASEDIR} && \
