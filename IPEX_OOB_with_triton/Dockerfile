@@ -19,16 +19,16 @@ RUN sed -i '50d' /etc/apt/sources.list && \
 #   wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip 
 #   unzip libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip
 
-# Step 2 DOWNLOAD IPEX
+# Step 2 Download IPEX binary
 # The versions of the IPEX C++ library can be found here:
-#   https://intel.github.io/intel-extension-for-pytorch/cpu/latest/tutorials/installation.html#install-c-sdk
+# https://intel.github.io/intel-extension-for-pytorch/cpu/latest/tutorials/installation.html#install-c-sdk
 #    wget https://intel-extension-for-pytorch.s3.amazonaws.com/libipex/cpu/libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run
 #    bash libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run install libtorch/
 
-# step 3 Create a docker container and copy files 
-# docker run -it -p8000:8000 -p8001:8001 -p8002:8002 --name ipex_triton -v ${PWD}/model_repository:/models nvcr.io/nvidia/tritonserver:23.05-py3`
-# docker cp libtorch/lib/libintel-ext-pt-cpu.so ipex_triton:/opt/tritonserver/backends/pytorch/` - on a separate terminal
-# cd backends/pytorch/ ; LD_PRELOAD="$(pwd)/libintel-ext-pt-cpu.so" tritonserver --model-repository=/models` - on the container
+# Step 3 Copy .so files to container image
+#    docker run -it -p8000:8000 -p8001:8001 -p8002:8002 --name ipex_triton -v ${PWD}/model_repository:/models nvcr.io/nvidia/tritonserver:23.05-py3`
+#    docker cp libtorch/lib/libintel-ext-pt-cpu.so ipex_triton:/opt/tritonserver/backends/pytorch/` 
+#    cd backends/pytorch/ ; LD_PRELOAD="$(pwd)/libintel-ext-pt-cpu.so" tritonserver --model-repository=/models`
 
 RUN BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" && \
 	curl https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.0.0%2Bcpu.zip -o ${BASEDIR}/libtorch.zip && \
@@ -36,8 +36,9 @@ RUN BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" && \
 	curl https://intel-extension-for-pytorch.s3.amazonaws.com/libipex/cpu/libintel-ext-pt-cxx11-abi-2.0.0%2Bcpu.run -o ${BASEDIR}/ipex.run && \
 	bash ${BASEDIR}/ipex.run install ${BASEDIR}/libtorch && \
 	cp ${BASEDIR}/libtorch/lib/libintel-ext-pt-cpu.so /opt/tritonserver/backends/pytorch/
-# When in the Docker container, you can now run tritonserver like this:
-# LD_PRELOAD="/opt/tritonserver/backends/pytorch/libintel-ext-pt-cpu.so ${LD_PRELOAD}" tritonserver --model-repository=/models
+
+# Step 4 When in the Docker container, you can now run tritonserver like this:
+#    LD_PRELOAD="/opt/tritonserver/backends/pytorch/libintel-ext-pt-cpu.so ${LD_PRELOAD}" tritonserver --model-repository=/models
 
 # you can append ", dirty_decay_ms:9000000000,muzzy_decay_ms:9000000000" to malloc conf for optimal performance but these can sometimes cause OOM crash
 ENV MALLOC_CONF="oversize_threshold:1,background_thread:true,metadata_thp:auto" 
