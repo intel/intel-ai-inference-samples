@@ -6,7 +6,6 @@ This readme provides a methodology to run Intel® Extension for PyTorch (IPEX) o
 ## Preparation
 - Docker installed on host instance.
 - Sample images from ImageNet dataset. 
-- Place IPEX optimized model at IPEX_OOB_with_triton/model_repository/densenet/1/
 
 ### Execution on localhost
 
