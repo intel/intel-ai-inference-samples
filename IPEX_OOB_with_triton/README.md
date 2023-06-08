@@ -1,4 +1,4 @@
-## Serving DenseNet models with IPEX® (w/o python backend) on Triton Server
+## Serving DenseNet models with IPEX® (w/ PyTorch backend) on Triton Server
 
 ## Description
 This readme provides a methodology to run Intel® Extension for PyTorch (IPEX) optimized model without writing python backend (model.py) script for triton server.
@@ -7,9 +7,6 @@ This readme provides a methodology to run Intel® Extension for PyTorch (IPEX) o
 - Docker installed on host instance.
 - Sample images from ImageNet dataset. 
 - Place IPEX optimized model at IPEX_OOB_with_triton/model_repository/densenet/1/
-
-## Supported models
-- DenseNet121        - PyTorch+IPEX [DenseNet121](https://pytorch.org/hub/pytorch_vision_densenet/ "DenseNet121")
 
 ### Execution on localhost
 
