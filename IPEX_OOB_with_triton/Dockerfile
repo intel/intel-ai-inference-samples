@@ -43,5 +43,3 @@ RUN BASEDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" && \
 # you can append ", dirty_decay_ms:9000000000,muzzy_decay_ms:9000000000" to malloc conf for optimal performance but these can sometimes cause OOM crash
 ENV MALLOC_CONF="oversize_threshold:1,background_thread:true,metadata_thp:auto" 
 ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libjemalloc.so /opt/tritonserver/backends/pytorch/libintel-ext-pt-cpu.so ${LD_PRELOAD}"
-ENV DNNL_PRIMITIVE_CACHE_CAPACITY=1024
-ENV DNNL_MAX_CPU_ISA="AVX512_CORE_AMX"
