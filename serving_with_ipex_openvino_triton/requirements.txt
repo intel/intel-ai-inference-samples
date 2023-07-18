@@ -1,5 +1,5 @@
 torch==1.13.1 -i https://download.pytorch.org/whl/cpu
-transformers==4.22.0
+transformers==4.30.0
 tritonclient[all]==2.23.0
 intel_extension_for_pytorch==1.13.0
 intel-openmp==2023.0.0
