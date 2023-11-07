@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Intel Corporation
+# Copyright (c) 2023 Intel Corporation
 # SPDX-License-Identifier: BSD-3-Clause
 
 # Copyright (c) 2021, NVIDIA CORPORATION. All rights reserved.
@@ -34,8 +34,8 @@ import triton_python_backend_utils as pb_utils
 import intel_extension_for_pytorch as ipex
 import json
 
-def make_model(model_name, input_shape, device):
-    print(f"{{ origin: '{model_name}', input shape: {input_shape}}}")
+def make_model(model_name, input_shape, device, bfloat16):
+    print(f"{{ origin: '{model_name}', input shape: {input_shape}, enabled bfloat16: {bfloat16}}}")
     # Download PyTorch model
     config = AutoConfig.from_pretrained(
         model_name, return_dict=False, torchscript=True, num_labels=2)
@@ -46,15 +46,15 @@ def make_model(model_name, input_shape, device):
 
     print('Optimizing model in IPEX:')
     try:
-      model = ipex.optimize(model, level="O1",auto_kernel_selection=True, conv_bn_folding=False)
-      with torch.no_grad():
+      model = ipex.optimize(model, level="O1",auto_kernel_selection=True, conv_bn_folding=False, dtype=torch.bfloat16 if bfloat16 else torch.float32)
+      with torch.no_grad(), torch.cpu.amp.autocast(enabled=bfloat16):
           model = torch.jit.trace(model, data, check_trace=False, strict=False)
           model = torch.jit.freeze(model)
     except Exception as e: print(e)
    
     print('Trigger Init Model Execution')
     # Enable fusion path (need to run forward propagation twice)
-    with torch.no_grad():
+    with torch.no_grad(), torch.cpu.amp.autocast(enabled=bfloat16):
         model(data)
         model(data)
     return model.to(device)
@@ -74,7 +74,7 @@ def compute_batch_set(full_batch, batches):
 
     return batch_set
 
-def execute_model(models, inputs, batches, dynamic_shape):
+def execute_model(models, inputs, batches, dynamic_shape, bfloat16):
     input_batches = [x.shape[0] for x in inputs]
 
     # Join all inputs into 1 torch.Tensor
@@ -91,10 +91,11 @@ def execute_model(models, inputs, batches, dynamic_shape):
 
     # Execute the model
     model_outputs = []
-    for i in range(len(splits)):
-        inp = splitted_inputs[i]
-        out = models[0 if dynamic_shape else splits[i]](inp)[1]
-        model_outputs.append(out)
+    with torch.no_grad(), torch.cpu.amp.autocast(enabled=bfloat16):
+      for i in range(len(splits)):
+          inp = splitted_inputs[i]
+          out = models[0 if dynamic_shape else splits[i]](inp)[1]
+          model_outputs.append(out)
 
     # Re-combine results
     full_output = torch.concat(model_outputs, 0)
@@ -144,6 +145,7 @@ class TritonPythonModel:
 
         self.batches = []
         self.dynamic_shape = True
+        self.bfloat16 = False
         parameters = self.model_config['parameters']
 
         if 'origin' in parameters:
@@ -157,11 +159,14 @@ class TritonPythonModel:
         if 'dynamic_shape' in parameters:
           self.dynamic_shape = json.loads(parameters['dynamic_shape']['string_value'])
 
+        if 'bfloat16' in parameters:
+          self.bfloat16 = json.loads(parameters['bfloat16']['string_value'])
+
         self.models_cpu = dict()
-        # Dynamic shapes supported in fp32 mode for PyTorch+IPEX
+        # Dynamic shapes supported in fp32/bf6 mode for PyTorch+IPEX
         if self.dynamic_shape:
           input_shape = [1, seq_length if seq_length > 0 else 128]
-          self.models_cpu[0] = make_model(origin, input_shape, self.device)
+          self.models_cpu[0] = make_model(origin, input_shape, self.device, self.bfloat16)
 
         else:
           if seq_length <= 0:
@@ -172,7 +177,7 @@ class TritonPythonModel:
 
           for batch in self.batches:
             input_shape = [batch, seq_length]
-            self.models_cpu[batch] = make_model(origin, input_shape, self.device)
+            self.models_cpu[batch] = make_model(origin, input_shape, self.device, self.bfloat16)
 
     def execute(self, requests):
         """`execute` must be implemented in every Python model. `execute`
@@ -203,7 +208,7 @@ class TritonPythonModel:
             in_0_cpu = dlpack.from_dlpack(in_0).to(self.device)
             inputs.append(in_0_cpu)
 
-        outputs = execute_model(self.models_cpu, inputs, self.batches, self.dynamic_shape)
+        outputs = execute_model(self.models_cpu, inputs, self.batches, self.dynamic_shape, self.bfloat16)
 
         # Convert model outputs to triton responses
         responses = []
