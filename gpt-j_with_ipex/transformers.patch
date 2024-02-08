@@ -1,19 +1,18 @@
 diff --git a/src/transformers/activations.py b/src/transformers/activations.py
-index d9caf8763..a3e3abd34 100644
+index 2355fb5fe..76817ba57 100644
 --- a/src/transformers/activations.py
 +++ b/src/transformers/activations.py
-@@ -32,8 +32,7 @@ class NewGELUActivation(nn.Module):
+@@ -53,7 +53,7 @@ class NewGELUActivation(nn.Module):
      """
  
      def forward(self, input: Tensor) -> Tensor:
 -        return 0.5 * input * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (input + 0.044715 * torch.pow(input, 3.0))))
--
-+        return nn.functional.gelu(input, approximate='tanh') 
++        return nn.functional.gelu(input, approximate='tanh')
+ 
  
  class GELUActivation(nn.Module):
-     """
 diff --git a/src/transformers/generation/utils.py b/src/transformers/generation/utils.py
-index 7650276c5..7d14236c9 100644
+index 1d413b3ab..2e7523ac3 100644
 --- a/src/transformers/generation/utils.py
 +++ b/src/transformers/generation/utils.py
 @@ -16,6 +16,8 @@
@@ -24,8 +23,8 @@ index 7650276c5..7d14236c9 100644
 +import time
  import warnings
  from dataclasses import dataclass
- from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-@@ -683,6 +685,9 @@ def _expand_inputs_for_generation(
+ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
+@@ -833,6 +835,9 @@ class GenerationMixin:
  
      def _extract_past_from_model_output(self, outputs: ModelOutput, standardize_cache_format: bool = False):
          past_key_values = None
@@ -35,8 +34,8 @@ index 7650276c5..7d14236c9 100644
          if "past_key_values" in outputs:
              past_key_values = outputs.past_key_values
          elif "mems" in outputs:
-@@ -1175,6 +1180,10 @@ def generate(
-         """
+@@ -1503,6 +1508,10 @@ class GenerationMixin:
+ 
          # 1. Handle `generation_config` and kwargs that might update it, and validate the `.generate()` call
          self._validate_model_class()
 +        self.jit = kwargs.pop("jit", False)
@@ -46,7 +45,7 @@ index 7650276c5..7d14236c9 100644
  
          # priority: `generation_config` argument > `model.generation_config` (the default generation config)
          if generation_config is None:
-@@ -2118,6 +2127,7 @@ def greedy_search(
+@@ -2517,6 +2526,7 @@ class GenerationMixin:
          ["It might be possible to get a better understanding of the nature of the problem, but it's not"]
          ```"""
          # init values
@@ -54,7 +53,7 @@ index 7650276c5..7d14236c9 100644
          logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
          stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
          if max_length is not None:
-@@ -2162,6 +2172,7 @@ def greedy_search(
+@@ -2562,6 +2572,7 @@ class GenerationMixin:
  
          this_peer_finished = False  # used by synced_gpus only
          while True:
@@ -62,15 +61,15 @@ index 7650276c5..7d14236c9 100644
              if synced_gpus:
                  # Under synced_gpus the `forward` call must continue until all gpus complete their sequence.
                  # The following logic allows an early break if all peers finished generating their sequence
-@@ -2229,6 +2240,7 @@ def greedy_search(
-                 unfinished_sequences = unfinished_sequences.mul((sum(next_tokens != i for i in eos_token_id)).long())
+@@ -2632,6 +2643,7 @@ class GenerationMixin:
+                     next_tokens.tile(eos_token_id_tensor.shape[0], 1).ne(eos_token_id_tensor.unsqueeze(1)).prod(dim=0)
+                 )
  
-             # stop when each sentence is finished, or if we exceed the maximum length
-+            latency_list.append(time.time() - tic)
-             if unfinished_sequences.max() == 0 or stopping_criteria(input_ids, scores):
-                 if not synced_gpus:
-                     break
-@@ -2237,7 +2249,7 @@ def greedy_search(
++                latency_list.append(time.time() - tic)
+                 # stop when each sentence is finished
+                 if unfinished_sequences.max() == 0:
+                     this_peer_finished = True
+@@ -2648,7 +2660,7 @@ class GenerationMixin:
  
          if return_dict_in_generate:
              if self.config.is_encoder_decoder:
@@ -79,8 +78,8 @@ index 7650276c5..7d14236c9 100644
                      sequences=input_ids,
                      scores=scores,
                      encoder_attentions=encoder_attentions,
-@@ -2247,14 +2259,19 @@ def greedy_search(
-                     decoder_hidden_states=decoder_hidden_states,
+@@ -2659,7 +2671,7 @@ class GenerationMixin:
+                     past_key_values=model_kwargs.get("past_key_values"),
                  )
              else:
 -                return GreedySearchDecoderOnlyOutput(
@@ -88,7 +87,8 @@ index 7650276c5..7d14236c9 100644
                      sequences=input_ids,
                      scores=scores,
                      attentions=decoder_attentions,
-                     hidden_states=decoder_hidden_states,
+@@ -2667,7 +2679,12 @@ class GenerationMixin:
+                     past_key_values=model_kwargs.get("past_key_values"),
                  )
          else:
 -            return input_ids
@@ -101,7 +101,7 @@ index 7650276c5..7d14236c9 100644
  
      def sample(
          self,
-@@ -2645,6 +2662,7 @@ def beam_search(
+@@ -3102,6 +3119,7 @@ class GenerationMixin:
          ['Wie alt bist du?']
          ```"""
          # init values
@@ -109,19 +109,18 @@ index 7650276c5..7d14236c9 100644
          logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
          stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
          if max_length is not None:
-@@ -2707,6 +2725,7 @@ def beam_search(
+@@ -3166,6 +3184,7 @@ class GenerationMixin:
  
-         this_peer_finished = False  # used by synced_gpus only
+         decoder_prompt_len = input_ids.shape[-1]  # record the prompt length of decoder
          while True:
 +            tic = time.time()
              if synced_gpus:
                  # Under synced_gpus the `forward` call must continue until all gpus complete their sequence.
                  # The following logic allows an early break if all peers finished generating their sequence
-@@ -2718,19 +2737,70 @@ def beam_search(
-                     break
+@@ -3178,18 +3197,70 @@ class GenerationMixin:
  
              model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
--
+ 
 -            outputs = self(
 -                **model_inputs,
 -                return_dict=True,
@@ -170,7 +169,7 @@ index 7650276c5..7d14236c9 100644
 +                    for k, v in model_inputs.items():
 +                        if v is not None and not isinstance(v, bool):
 +                            example_inputs.append(v)
-+                    example_inputs = tuple(example_inputs)                  
++                    example_inputs = tuple(example_inputs)
 +                    self_jit = torch.jit.trace(self, example_inputs, strict=False)
 +                    self_jit = torch.jit.freeze(self_jit.eval())
 +                    setattr(self, "trace_graph", self_jit)
@@ -198,10 +197,10 @@ index 7650276c5..7d14236c9 100644
 +                    cur_len = cur_len + 1
 +                    continue  # don't waste resources running the code we don't need
 +                next_token_logits = outputs[0][:, -1, :]
-             # hack: adjust tokens for Marian. For Marian we have to make sure that the `pad_token_id`
-             # cannot be generated both before and after the `nn.functional.log_softmax` operation.
-             next_token_logits = self.adjust_logits_during_generation(next_token_logits, cur_len=cur_len)
-@@ -2799,6 +2869,7 @@ def beam_search(
+             next_token_scores = nn.functional.log_softmax(
+                 next_token_logits, dim=-1
+             )  # (batch_size * num_beams, vocab_size)
+@@ -3261,6 +3332,7 @@ class GenerationMixin:
  
              # increase cur_len
              cur_len = cur_len + 1
@@ -209,7 +208,7 @@ index 7650276c5..7d14236c9 100644
  
              if beam_scorer.is_done or stopping_criteria(input_ids, scores):
                  if not synced_gpus:
-@@ -2822,7 +2893,7 @@ def beam_search(
+@@ -3285,7 +3357,7 @@ class GenerationMixin:
                  sequence_outputs["sequence_scores"] = None
  
              if self.config.is_encoder_decoder:
@@ -218,8 +217,8 @@ index 7650276c5..7d14236c9 100644
                      sequences=sequence_outputs["sequences"],
                      sequences_scores=sequence_outputs["sequence_scores"],
                      scores=scores,
-@@ -2834,7 +2905,7 @@ def beam_search(
-                     decoder_hidden_states=decoder_hidden_states,
+@@ -3298,7 +3370,7 @@ class GenerationMixin:
+                     past_key_values=model_kwargs.get("past_key_values"),
                  )
              else:
 -                return BeamSearchDecoderOnlyOutput(
@@ -227,12 +226,13 @@ index 7650276c5..7d14236c9 100644
                      sequences=sequence_outputs["sequences"],
                      sequences_scores=sequence_outputs["sequence_scores"],
                      scores=scores,
-@@ -2843,7 +2914,12 @@ def beam_search(
-                     hidden_states=decoder_hidden_states,
+@@ -3308,7 +3380,13 @@ class GenerationMixin:
+                     past_key_values=model_kwargs.get("past_key_values"),
                  )
          else:
 -            return sequence_outputs["sequences"]
 +            output_result = sequence_outputs["sequences"]
++
 +        # result
 +        if self.token_latency is not None:
 +            return (output_result, latency_list)
@@ -242,19 +242,10 @@ index 7650276c5..7d14236c9 100644
      def beam_sample(
          self,
 diff --git a/src/transformers/models/gptj/modeling_gptj.py b/src/transformers/models/gptj/modeling_gptj.py
-index 84282fb07..c78245f3d 100755
+index b4989a980..573ed9dd5 100644
 --- a/src/transformers/models/gptj/modeling_gptj.py
 +++ b/src/transformers/models/gptj/modeling_gptj.py
-@@ -77,7 +77,7 @@ def duplicate_interleave(m):
- 
- 
- def apply_rotary_pos_emb(x, sincos, offset=0):
--    sin, cos = map(lambda t: duplicate_interleave(t)[None, offset : x.shape[1] + offset, None, :], sincos)
-+    sin, cos = map(lambda t: duplicate_interleave(t)[None, offset : torch.tensor(x.shape[1]) + torch.tensor(offset), None, :], sincos)
-     # einsum notation for lambda t: repeat(t[offset:x.shape[1]+offset,:], "n d -> () n () (d j)", j=2)
-     return (x * cos) + (rotate_every_two(x) * sin)
- 
-@@ -791,9 +791,9 @@ def forward(
+@@ -831,9 +831,9 @@ class GPTJForCausalLM(GPTJPreTrainedModel):
          self,
          input_ids: Optional[torch.LongTensor] = None,
          past_key_values: Optional[Tuple[Tuple[torch.Tensor]]] = None,

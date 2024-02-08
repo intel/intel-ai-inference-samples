@@ -68,7 +68,7 @@ RUN export PATH=~/anaconda3/bin/:${PATH} && \
 # Build IPEX
 RUN source /root/anaconda3/bin/activate llm && \
     pip install mkl intel-openmp && \
-    cd /opt/installs && git clone -b master  https://github.com/intel/intel-extension-for-pytorch.git ipex-cpu && \
+    cd /opt/installs && git clone -b main  https://github.com/intel/intel-extension-for-pytorch.git ipex-cpu && \
     cd /opt/installs/ipex-cpu && git checkout de88d93 && git submodule sync && git submodule update --init --recursive && \
     export DNNL_GRAPH_BUILD_COMPILER_BACKEND=1 && \
     source /opt/rh/gcc-toolset-11/enable && \
@@ -94,7 +94,7 @@ RUN source /root/anaconda3/bin/activate llm && \
 # Build Transformer
 COPY transformers.patch /opt/installs
 RUN source /root/anaconda3/bin/activate llm  && \
-    cd /opt/installs && git clone -b v4.26.1 --depth 1  https://github.com/huggingface/transformers.git && \
+    cd /opt/installs && git clone -b v4.36.0 --depth 1  https://github.com/huggingface/transformers.git && \
     cd /opt/installs/transformers && git submodule update --init --recursive && \
     git apply /opt/installs/transformers.patch && \
     python setup.py install
