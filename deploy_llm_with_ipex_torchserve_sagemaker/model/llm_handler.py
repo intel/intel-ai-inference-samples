@@ -1,8 +1,6 @@
 import os
 import logging
 from abc import ABC
-from pathlib import Path
-import subprocess
 
 import torch
 import transformers
@@ -11,7 +9,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from ts.context import Context
 from ts.torch_handler.base_handler import BaseHandler
 import intel_extension_for_pytorch as ipex
-from codegen25 import CodeGen25Config, EXAMPLE_INPUTS_MODE
 
 logger = logging.getLogger(__name__)
 logger.info("Transformers version %s", transformers.__version__)
@@ -76,9 +73,7 @@ class CodeGenHandler(BaseHandler, ABC):
             self.amp_enabled = False
             self.amp_dtype = torch.float32
 
-        # generate args: using greedy for now
         self.num_beams = 1 if self.greedy else 4
-        # donot use min number of tokens on demo mode, only use it on benchmark mode
         self.generate_kwargs = dict(
             do_sample=False, 
             temperature=0.9, 
@@ -98,13 +93,16 @@ class CodeGenHandler(BaseHandler, ABC):
             config.text_max_length = int(self.max_length)
         
         # load model and tokenizer
-        model = CodeGen25Config(model_name)
-        self.user_model = model.get_user_model(config, self.benchmark)
-        self.tokenizer = model.get_tokenizer() 
+        try:
+            with ipex.OnDevice(dtype=torch.float, device="meta"):
+                self.user_model = AutoModelForCausalLM.from_config(config)
+        except (RuntimeError, AttributeError):
+            self.user_model = AutoModelForCausalLM.from_config(self.model_id, config=config, low_cpu_mem_usage=True)
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         logger.info("Data type of the model: %s", self.user_model.dtype)
         
-        if model.to_channels_last:
-            self.user_model = self.user_model.to(memory_format=torch.channels_last)
+        self.user_model = self.user_model.to(memory_format=torch.channels_last)
         self.user_model.eval()
         
 
@@ -135,69 +133,19 @@ class CodeGenHandler(BaseHandler, ABC):
         ]
 
         logger.info(f"num_attention_heads: {n_heads}, num_hidden_layers: {n_layers}, hidden size: {hidden_size}, head_dim: {head_dim}")
-        
 
-
-        # Different model need to have their inputs supplied in different order unless we pass dict 
-        # For torchserve sending dict is not always possible
-        # This function reorders the input ids, masks, and kv cache based on models 
-        def get_example_inputs(model, global_past_key_value):
+        def get_example_inputs(global_past_key_value):
             example_inputs = None
             input_ids = torch.ones(32).to(torch.long)
             attention_mask = torch.ones(len(input_ids))
-            if model.example_inputs_mode == EXAMPLE_INPUTS_MODE.MASK_POS_KV:
-                position_ids = torch.arange(len(input_ids))
-                example_inputs = (
-                    input_ids.unsqueeze(0),
-                    attention_mask.unsqueeze(0),
-                    position_ids.unsqueeze(0),
-                    tuple(global_past_key_value),
-                )
-            elif model.example_inputs_mode == EXAMPLE_INPUTS_MODE.MASK_KV_POS:
-                position_ids = torch.arange(len(input_ids))
-                example_inputs = (
-                    input_ids.unsqueeze(0),
-                    attention_mask.unsqueeze(0),
-                    tuple(global_past_key_value),
-                    position_ids.unsqueeze(0),
-                )
-            elif model.example_inputs_mode == EXAMPLE_INPUTS_MODE.KV_MASK:
-                example_inputs = (
-                    input_ids.unsqueeze(0),
-                    tuple(global_past_key_value),
-                    attention_mask.unsqueeze(0),
-                )
-            elif model.example_inputs_mode == EXAMPLE_INPUTS_MODE.MASK_KV:
-                example_inputs = (
-                    input_ids.unsqueeze(0),
-                    attention_mask.unsqueeze(0),
-                    tuple(global_past_key_value),
-                )
-            elif model.example_inputs_mode == EXAMPLE_INPUTS_MODE.MASK_KV_ENC:
-                last_hidden_state = torch.rand([1, 32, 2048])
-                global_past_key_value = [
-                    (
-                        torch.zeros(1, 0, 0, 1, dtype=torch.long).contiguous(),
-                        torch.zeros([1, n_heads, 1, head_dim]).contiguous(),
-                        torch.zeros([1, n_heads, 1, head_dim]).contiguous(),
-                        beam_idx_tmp,
-                        torch.zeros(1, 0, 0, 1, dtype=torch.long).contiguous(),
-                        torch.zeros([32, 1, n_heads, head_dim]).contiguous(),
-                        torch.zeros([32, 1, n_heads, head_dim]).contiguous(),
-                        beam_idx_tmp,
-                    )
-                    for i in range(n_layers)
-                ]
-                example_inputs = (
-                    torch.ones(1).to(torch.long).unsqueeze(0),
-                    attention_mask.unsqueeze(0),
-                    tuple(global_past_key_value),
-                    (last_hidden_state,),
-                )
-            else:
-                raise RuntimeError("Your model does not match existing example inputs used in ipex quantization, exiting...")
-            if hasattr(model, "extra_inputs"):
-                example_inputs = example_inputs + model.extra_inputs
+
+            position_ids = torch.arange(len(input_ids))
+            example_inputs = (
+                input_ids.unsqueeze(0),
+                attention_mask.unsqueeze(0),
+                tuple(global_past_key_value),
+                position_ids.unsqueeze(0),
+            )
             return example_inputs
 
         # lets implement the WOQ 
@@ -241,7 +189,7 @@ class CodeGenHandler(BaseHandler, ABC):
             )
             logger.info("The model conversion completed, now tracing the quantized model")
 
-            example_inputs = get_example_inputs(model, global_past_key_value)
+            example_inputs = get_example_inputs(global_past_key_value)
 
             with torch.no_grad(), torch.cpu.amp.autocast(
                 enabled=self.amp_enabled,
@@ -255,18 +203,15 @@ class CodeGenHandler(BaseHandler, ABC):
         # set PAD token
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token=self.tokenizer.eos_token
-        
 
         if self.benchmark:
             setattr(self.user_model, "trace_graph", self_jit)
             logger.info("Successfully loaded the Model %s with Intel® Extension for PyTorch*", ctx.model_name)
 
-
             if self.token_latency:
                 if not hasattr(self.user_model.config, "token_latency"):
                     self.user_model.config.token_latency = True
 
-        
             # set min token count for exact number of token generation    
             benchmark_generate_kwargs = dict(do_sample=False, temperature=0.9, num_beams=self.num_beams, max_new_tokens=self.max_new_tokens, min_new_tokens=self.max_new_tokens)
             import time
@@ -360,10 +305,7 @@ class CodeGenHandler(BaseHandler, ABC):
     def inference(self, input_batch):
         input_ids_batch, attention_mask_batch = input_batch
         inferences = []
-        
-        # Benchmarking over, lets disable it 
-        #self.benchmark = False
-        ################ now it works on request sent over by the client ###################
+
         with torch.inference_mode(), torch.no_grad(), torch.autocast(
             device_type="cpu",
             enabled=self.amp_enabled,

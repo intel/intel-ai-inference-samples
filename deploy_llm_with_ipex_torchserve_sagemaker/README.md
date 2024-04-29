@@ -1,10 +1,10 @@
-# Deploy optimized Codegen model with Intel® Extension for PyTorch (IPEX) and Torchserve on AWS Sagemaker
+# Deploy optimized LLM model with Intel® Extension for PyTorch (IPEX) and Torchserve on AWS Sagemaker
 
 ## Description
-This sample provide code to deploy Codegen 2.5 model with Intel® Extension for PyTorch (IPEX) with Torchserve on AWS Sagemaker on instances supporting 4th Gen Intel® Xeon® Scalable Processors. The notebook provided builds a Docker container, pushes it to AWS ECR, creates a torchserve file and puts in on AWS S3 bucket and creates and invokes an AWS Sagemaker endpoint.
+This sample provide code to deploy a LLM model with Intel® Extension for PyTorch (IPEX) with Torchserve on AWS Sagemaker on instances supporting 4th Gen Intel® Xeon® Scalable Processors. The notebook provided builds a Docker container, pushes it to AWS ECR, creates a torchserve file and puts in on AWS S3 bucket and creates and invokes an AWS Sagemaker endpoint. The pipeline was tested on [Codegen model](https://huggingface.co/Salesforce/codegen25-7b-multi_P).
 
 ## Execution
-Please refer to [E2E-DLC-Codegen.ipynb](E2E-DLC-Codegen.ipynb) for more information.
+Please refer to [E2E-LLM-Sagemaker-IPEX.ipynb](E2E-LLM-Sagemaker-IPEX.ipynb) for more information.
 
 ## Support
 Please submit your questions, feature requests, and bug reports on the [GitHub issues page](https://github.com/intel/intel-ai-inference-samples/issues).
