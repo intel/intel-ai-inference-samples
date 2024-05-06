@@ -42,20 +42,20 @@ class CodeGenHandler(BaseHandler, ABC):
         self.max_length = int(ctx.model_yaml_config["handler"]["max_length"])
         # when benchmarking, we'll limit both the min and max token to this number for exact measurement 
         self.max_new_tokens = int(ctx.model_yaml_config["handler"]["max_new_tokens"])
-        
+
         # optimization params: right now we're only using WOQ, for SQ and other approach need to add support 
         self.ipex_weight_only_quantization = ctx.model_yaml_config["handler"]["ipex_weight_only_quantization"]
         self.woq_dtype = ctx.model_yaml_config["handler"]["woq_dtype"]
         self.lowp_mode = ctx.model_yaml_config["handler"]["lowp_mode"]
         self.act_quant_mode = ctx.model_yaml_config["handler"]["act_quant_mode"] # This is only relevant for INT4x2 quantization
         self.group_size = ctx.model_yaml_config["handler"]["group_size"]
-        
+
         # runtime params 
         self.benchmark = ctx.model_yaml_config["handler"]["benchmark"]
         self.token_latency = ctx.model_yaml_config["handler"]["token_latency"]
         self.num_warmup = ctx.model_yaml_config["handler"]["num_warmup"]
         self.num_iter = ctx.model_yaml_config["handler"]["num_iter"]
-        
+
         # decoding parameters 
         self.greedy = ctx.model_yaml_config["handler"]["greedy"]
 
@@ -80,24 +80,24 @@ class CodeGenHandler(BaseHandler, ABC):
             num_beams=self.num_beams, 
             max_new_tokens=self.max_new_tokens,
             min_new_tokens=self.max_new_tokens
-        ) 
-        
+        )
+
         # device 
         device = torch.device("cpu")
-        
+
         # model config 
         config = AutoConfig.from_pretrained(model_name, torchscript=True, trust_remote_code=True)
-        
+
         # set up max context 
         if not hasattr(config, "text_max_length"):
             config.text_max_length = int(self.max_length)
-        
+
         # load model and tokenizer
         try:
-            with ipex.OnDevice(dtype=torch.float, device="meta"):
+            with ipex.OnDevice(dtype=torch.float, device=device):
                 self.user_model = AutoModelForCausalLM.from_config(config)
         except (RuntimeError, AttributeError):
-            self.user_model = AutoModelForCausalLM.from_config(self.model_id, config=config, low_cpu_mem_usage=True)
+            self.user_model = AutoModelForCausalLM.from_config(model_name, config=config, low_cpu_mem_usage=True)
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         logger.info("Data type of the model: %s", self.user_model.dtype)
@@ -176,7 +176,7 @@ class CodeGenHandler(BaseHandler, ABC):
                 act_quant_mode=act_quant_mode_dict[self.act_quant_mode],
                 group_size=self.group_size,
             )
-            
+
             # low precision checkpoint can be loaded, but we're considering there isn't any 
             low_precision_checkpoint = None
             self.user_model = ipex.llm.optimize(
@@ -199,7 +199,7 @@ class CodeGenHandler(BaseHandler, ABC):
                 self_jit = torch.jit.freeze(self_jit.eval())
 
             logger.info("The IPEX Weight only quantization has been completed successfully")
-            
+
         # set PAD token
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token=self.tokenizer.eos_token
@@ -219,12 +219,12 @@ class CodeGenHandler(BaseHandler, ABC):
             total_list = []
             num_iter = 10
             num_warmup = 2
-            
+
             input_size = self.max_length - self.max_new_tokens
             input_ids = torch.randint(1, 10000, (self.batch_size, input_size)).to(torch.long)
 
             logger.info("Prompt size: %i", input_size)
-            
+
             with torch.inference_mode(), torch.no_grad(), torch.autocast(
                 device_type="cpu",
                 enabled=self.amp_enabled,
@@ -236,7 +236,7 @@ class CodeGenHandler(BaseHandler, ABC):
                     gen_ids = output[0] if self.token_latency else output
                     gen_text = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
                     toc = time.time()
-                    
+
                     logger.info("Iteration: %d, Time: %.6f sec" % (i, toc - tic))
                     if i >= num_warmup:
                         total_time += toc - tic
@@ -275,7 +275,7 @@ class CodeGenHandler(BaseHandler, ABC):
                 input_text = data.get("body")
             if isinstance(input_text, (bytes, bytearray)):
                 input_text = input_text.decode("utf-8")
-        
+
             with torch.inference_mode(), torch.no_grad(), torch.autocast(
                 device_type="cpu",
                 enabled=self.amp_enabled,
@@ -289,7 +289,7 @@ class CodeGenHandler(BaseHandler, ABC):
                                         add_special_tokens=True,
                                         return_tensors="pt",
                                         )
-            
+
             input_ids = inputs["input_ids"]
             attention_mask = inputs["attention_mask"]
             # making a batch out of the recieved requests
@@ -301,7 +301,7 @@ class CodeGenHandler(BaseHandler, ABC):
                     input_ids_batch = torch.cat((input_ids_batch, input_ids), 0)
                     attention_mask_batch = torch.cat((attention_mask_batch, attention_mask), 0)
         return (input_ids_batch, attention_mask_batch)
-        
+
     def inference(self, input_batch):
         input_ids_batch, attention_mask_batch = input_batch
         inferences = []
