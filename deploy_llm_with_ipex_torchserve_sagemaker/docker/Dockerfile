@@ -1,5 +1,5 @@
 # Copyright (c) 2024 Intel Corporation
-# SPDX-License-Identifier: MIT-0
+# SPDX-License-Identifier: Apache-2.0
 
 ARG PYTHON=python3
 ARG PYTHON_VERSION=3.10.13
