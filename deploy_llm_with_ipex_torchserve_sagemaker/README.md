@@ -20,5 +20,8 @@ This third party software, even if included with the distribution of the Intel s
 Intel, the Intel logo, OpenVINO, the OpenVINO logo and Intel Xeon are trademarks of Intel Corporation or its subsidiaries.
 * Other names and brands may be claimed as the property of others.
 
+## Human Rights Disclaimer
+Intel is committed to respecting human rights and avoiding causing or directly contributing to adverse impacts on human rights. See Intel’s Global Human Rights Policy. The software licensed from Intel is intended for socially responsible applications and should not be used to cause or contribute to a violation of internationally recognized human rights.
+
 &copy;Intel Corporation
 

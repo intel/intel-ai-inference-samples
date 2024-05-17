@@ -3,7 +3,7 @@ maxWorkers: 1
 responseTimeout: 1500
 
 handler:
-    model_name: "Salesforce/codegen25-7b-multi"
+    model_name: ""
     batch_size: 1
     max_length: 1024 
     max_new_tokens: 128
