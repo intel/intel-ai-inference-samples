@@ -21,7 +21,6 @@ Intel, the Intel logo, OpenVINO, the OpenVINO logo and Intel Xeon are trademarks
 * Other names and brands may be claimed as the property of others.
 
 ## Human Rights Disclaimer
-Intel is committed to respecting human rights and avoiding causing or directly contributing to adverse impacts on human rights. See Intel’s Global Human Rights Policy. The software licensed from Intel is intended for socially responsible applications and should not be used to cause or contribute to a violation of internationally recognized human rights.
+Intel is committed to respecting human rights and avoiding causing or directly contributing to adverse impacts on human rights. See [Intel's Global Human Rights Policy](https://www.intel.com/content/www/us/en/policy/policy-human-rights.html "Intel's Global Human Rights Policy"). The software licensed from Intel is intended for socially responsible applications and should not be used to cause or contribute to a violation of internationally recognized human rights.
 
 &copy;Intel Corporation
-
