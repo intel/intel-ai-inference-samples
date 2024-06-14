@@ -43,7 +43,7 @@ class CodeGenHandler(BaseHandler, ABC):
         # generation params
         self.batch_size = int(ctx.model_yaml_config["handler"]["batch_size"])
         self.max_length = int(ctx.model_yaml_config["handler"]["max_length"])
-        # when benchmarking, we'll limit both the min and max token to this number for exact measurement 
+        # when benchmarking, we'll limit both the min and max token to this number for exact measurement
         self.max_new_tokens = int(ctx.model_yaml_config["handler"]["max_new_tokens"])
 
         # optimization params: right now we're only using WOQ, for SQ and other approach need to add support 
@@ -85,9 +85,6 @@ class CodeGenHandler(BaseHandler, ABC):
             min_new_tokens=self.max_new_tokens
         )
 
-        # device 
-        device = torch.device("cpu")
-
         # model config 
         config = AutoConfig.from_pretrained(model_name, torchscript=True, trust_remote_code=True)
 
@@ -95,63 +92,16 @@ class CodeGenHandler(BaseHandler, ABC):
         if not hasattr(config, "text_max_length"):
             config.text_max_length = int(self.max_length)
 
-        # load model and tokenizer
-        try:
-            with ipex.OnDevice(dtype=torch.float, device=device):
-                self.user_model = AutoModelForCausalLM.from_config(config)
-        except (RuntimeError, AttributeError):
-            self.user_model = AutoModelForCausalLM.from_config(model_name, config=config, low_cpu_mem_usage=True)
+        self.user_model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=self.amp_dtype,
+                                                               config=config, low_cpu_mem_usage=True,
+                                                               trust_remote_code=True)
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         logger.info("Data type of the model: %s", self.user_model.dtype)
         
         self.user_model = self.user_model.to(memory_format=torch.channels_last)
         self.user_model.eval()
-        
 
-        # dummy past key value
-        beam_idx_tmp = torch.zeros((2048, int(self.batch_size * self.num_beams)), dtype=torch.long).contiguous()
-        def _get_target_nums(names):
-            for n in names:
-                if hasattr(self.user_model.config, n):
-                    return getattr(self.user_model.config, n)
-            logger.error(f"Not found target {names[0]}")
-            exit(0)
-
-        num_heads_names = ["num_attention_heads", "n_head", "num_heads", "n_heads"]
-        num_layers_names = ["num_hidden_layers", "n_layer", "num_layers", "n_layers"]
-        hidden_size_names = ["hidden_size", "n_embd"]
-        n_heads = _get_target_nums(num_heads_names)
-        n_layers = _get_target_nums(num_layers_names)
-        hidden_size = _get_target_nums(hidden_size_names)
-        head_dim = int(hidden_size / n_heads)
-        global_past_key_value = [
-            (
-                torch.zeros(1, 0, 0, 1, dtype=torch.long).contiguous(),
-                torch.zeros([1, n_heads, 1, head_dim]).contiguous(),
-                torch.zeros([1, n_heads, 1, head_dim]).contiguous(),
-                beam_idx_tmp,
-            )
-            for i in range(n_layers)
-        ]
-
-        logger.info(f"num_attention_heads: {n_heads}, num_hidden_layers: {n_layers}, hidden size: {hidden_size}, head_dim: {head_dim}")
-
-        def get_example_inputs(global_past_key_value):
-            example_inputs = None
-            input_ids = torch.ones(32).to(torch.long)
-            attention_mask = torch.ones(len(input_ids))
-
-            position_ids = torch.arange(len(input_ids))
-            example_inputs = (
-                input_ids.unsqueeze(0),
-                attention_mask.unsqueeze(0),
-                tuple(global_past_key_value),
-                position_ids.unsqueeze(0),
-            )
-            return example_inputs
-
-        # lets implement the WOQ 
         if self.ipex_weight_only_quantization:
             weight_dtype = torch.quint4x2 if self.woq_dtype == "INT4" else torch.qint8
 
@@ -179,36 +129,25 @@ class CodeGenHandler(BaseHandler, ABC):
                 act_quant_mode=act_quant_mode_dict[self.act_quant_mode],
                 group_size=self.group_size,
             )
-
-            # low precision checkpoint can be loaded, but we're considering there isn't any 
             low_precision_checkpoint = None
-            self.user_model = ipex.llm.optimize(
-                self.user_model.eval(),
-                dtype=self.amp_dtype,
-                quantization_config=qconfig,
-                inplace=True,
-                low_precision_checkpoint=low_precision_checkpoint,
-                deployment_mode=False,
-            )
-            logger.info("The model conversion completed, now tracing the quantized model")
+        else:
+            qconfig = None
+            low_precision_checkpoint = None
 
-            example_inputs = get_example_inputs(global_past_key_value)
-
-            with torch.no_grad(), torch.cpu.amp.autocast(
-                enabled=self.amp_enabled,
-                dtype=self.amp_dtype
-            ):
-                self_jit = torch.jit.trace(self.user_model.eval(), example_inputs, strict=False, check_trace=False)
-                self_jit = torch.jit.freeze(self_jit.eval())
-
-            logger.info("The IPEX Weight only quantization has been completed successfully")
+        self.user_model = ipex.llm.optimize(
+            self.user_model.eval(),
+            dtype=self.amp_dtype,
+            quantization_config=qconfig,
+            inplace=True,
+            low_precision_checkpoint=low_precision_checkpoint,
+            deployment_mode=True,
+        )
 
         # set PAD token
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token=self.tokenizer.eos_token
 
         if self.benchmark:
-            setattr(self.user_model, "trace_graph", self_jit)
             logger.info("Successfully loaded the Model %s with Intel® Extension for PyTorch*", ctx.model_name)
 
             if self.token_latency:
@@ -220,8 +159,8 @@ class CodeGenHandler(BaseHandler, ABC):
             import time
             total_time = 0.0
             total_list = []
-            num_iter = 10
-            num_warmup = 2
+            num_iter = self.num_iter + self.num_warmup
+            num_warmup = self.num_warmup
 
             input_size = self.max_length - self.max_new_tokens
             input_ids = torch.randint(1, 10000, (self.batch_size, input_size)).to(torch.long)
@@ -272,13 +211,14 @@ class CodeGenHandler(BaseHandler, ABC):
     def preprocess(self, requests):
         input_ids_batch = None
         attention_mask_batch = None
-        for idx, data in enumerate(requests):
+        for _, data in enumerate(requests):
             input_text = data.get("data")
             if input_text is None:
                 input_text = data.get("body")
             if isinstance(input_text, (bytes, bytearray)):
                 input_text = input_text.decode("utf-8")
 
+            print(f"Received input_text: {input_text}")
             with torch.inference_mode(), torch.no_grad(), torch.autocast(
                 device_type="cpu",
                 enabled=self.amp_enabled,
@@ -315,10 +255,11 @@ class CodeGenHandler(BaseHandler, ABC):
             dtype=self.amp_dtype
         ):
             outputs = self.user_model.generate(input_ids_batch, attention_mask=attention_mask_batch, **self.generate_kwargs)
-            for i, x in enumerate(outputs):
-                inferences.append(self.tokenizer.decode(outputs[i], skip_special_tokens=True))
+            for output in outputs:
+                inferences.append(self.tokenizer.decode(output, skip_special_tokens=True))
 
         return inferences
 
     def postprocess(self, inference_output):
+        print(f"Generated output: {inference_output}")
         return inference_output

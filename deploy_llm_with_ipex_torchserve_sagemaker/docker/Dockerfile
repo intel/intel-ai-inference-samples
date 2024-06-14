@@ -111,12 +111,12 @@ RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/wh
     "prompt-toolkit<3.0.39"
 
 # Install Pytorch
-RUN pip install --no-cache-dir -U torch==2.2 torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir -U torch==2.3 torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
 # Install Intel® Extension for PyTorch*
 RUN pip install --no-cache-dir -U \
     intel-openmp \
-    intel-extension-for-pytorch==2.2.0
+    intel-extension-for-pytorch==2.3.0
 
 RUN python -m pip install oneccl_bind_pt --extra-index-url https://pytorch-extension.intel.com/release-whl/stable/cpu/us/
 
