@@ -7,8 +7,9 @@ responseTimeout: 1500
 
 handler:
     model_name: ""
+    access_token: ""
     batch_size: 1
-    max_length: 1024 
+    max_length: 1024
     max_new_tokens: 128
     ipex_weight_only_quantization: true
     woq_dtype: "INT8"
