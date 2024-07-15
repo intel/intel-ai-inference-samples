@@ -39,6 +39,7 @@ class CodeGenHandler(BaseHandler, ABC):
     def initialize(self, ctx: Context):
         logger.info(f"Params: {ctx.model_yaml_config['handler']}")
         model_name = ctx.model_yaml_config["handler"]["model_name"]
+        access_token = False if ctx.model_yaml_config["handler"]["access_token"] is None or ctx.model_yaml_config["handler"]["access_token"] == "" else ctx.model_yaml_config["handler"]["access_token"]
 
         # generation params
         self.batch_size = int(ctx.model_yaml_config["handler"]["batch_size"])
@@ -86,7 +87,7 @@ class CodeGenHandler(BaseHandler, ABC):
         )
 
         # model config 
-        config = AutoConfig.from_pretrained(model_name, torchscript=True, trust_remote_code=True)
+        config = AutoConfig.from_pretrained(model_name, torchscript=True, trust_remote_code=True, token=access_token)
 
         # set up max context 
         if not hasattr(config, "text_max_length"):
@@ -94,9 +95,9 @@ class CodeGenHandler(BaseHandler, ABC):
 
         self.user_model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=self.amp_dtype,
                                                                config=config, low_cpu_mem_usage=True,
-                                                               trust_remote_code=True)
+                                                               trust_remote_code=True, token=access_token)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, token=access_token)
         logger.info("Data type of the model: %s", self.user_model.dtype)
         
         self.user_model = self.user_model.to(memory_format=torch.channels_last)

@@ -3,7 +3,7 @@
 
 ARG PYTHON=python3
 ARG PYTHON_VERSION=3.10.13
-ARG MINIFORGE3_VERSION=23.11.0-0
+ARG MINIFORGE3_VERSION=24.3.0-0
 
 FROM ubuntu:20.04 AS sagemaker
 
@@ -14,7 +14,7 @@ ARG PYTHON
 ARG PYTHON_VERSION
 ARG MINIFORGE3_VERSION
 
-ENV TORCHSERVE_VERSION="0.8.2"
+ENV TORCHSERVE_VERSION="0.11.0"
 ENV SM_TOOLKIT_VERSION="2.0.22"
 ENV SAGEMAKER_SERVING_MODULE sagemaker_pytorch_serving_container.serving:main
 
@@ -68,7 +68,7 @@ RUN curl -L -o ~/miniforge3.sh https://github.com/conda-forge/miniforge/releases
  && chmod +x ~/miniforge3.sh \
  && ~/miniforge3.sh -b -p /opt/conda \
  && rm ~/miniforge3.sh \
- && /opt/conda/bin/conda install -c conda-forge \
+ && /opt/conda/bin/conda install -c conda-forge -y \
     python=${PYTHON_VERSION} \
     cython \
     "mkl>=2023.2.0" \
