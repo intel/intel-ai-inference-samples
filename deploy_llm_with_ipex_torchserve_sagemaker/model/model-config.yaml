@@ -22,3 +22,9 @@ handler:
     num_iter: 8
     greedy: true
     
+micro_batching:
+    micro_batch_size: 1
+    parallelism:
+        preprocess: 2
+        inference: 1
+        postprocess: 2
