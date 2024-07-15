@@ -4,37 +4,29 @@
 import os
 import logging
 from abc import ABC
+from threading import Thread
 
 import torch
 import transformers
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 
 from ts.context import Context
+from ts.handler_utils.hf_batch_streamer import TextIteratorStreamerBatch
+from ts.handler_utils.micro_batching import MicroBatching
+from ts.handler_utils.utils import send_intermediate_predict_response
 from ts.torch_handler.base_handler import BaseHandler
+
 import intel_extension_for_pytorch as ipex
 
 logger = logging.getLogger(__name__)
 logger.info("Transformers version %s", transformers.__version__)
-
-IPEX_ENABLE = False
-if os.environ.get("TS_IPEX_ENABLE", "false") == "true":
-    try:
-        import intel_extension_for_pytorch as ipex
-        try:
-            ipex._C.disable_jit_linear_repack()
-        except Exception:
-            pass
-        IPEX_ENABLE = True
-    except ImportError as error:
-        logger.warning(
-            "IPEX is enabled but intel-extension-for-pytorch is not installed. Proceeding without IPEX."
-        )
-        IPEX_ENABLE = False
+logger.info("IPEX version %s", ipex.__version__)
 
 class CodeGenHandler(BaseHandler, ABC):
 
     def __init__(self):
         super(CodeGenHandler, self).__init__()
+        self.handle = MicroBatching(self)
 
     def initialize(self, ctx: Context):
         logger.info(f"Params: {ctx.model_yaml_config['handler']}")
@@ -63,6 +55,18 @@ class CodeGenHandler(BaseHandler, ABC):
         # decoding parameters 
         self.greedy = ctx.model_yaml_config["handler"]["greedy"]
 
+        # micro batching initialization
+        micro_batch_config = ctx.model_yaml_config.get("micro_batching", {})
+        micro_batching_parallelism = micro_batch_config.get("parallelism", None)
+        if micro_batching_parallelism:
+            logger.info(
+                f"Setting micro batching parallelism  from model_config_yaml: {micro_batching_parallelism}"
+            )
+            self.handle.parallelism = micro_batching_parallelism
+
+        self.handle.micro_batch_size = micro_batch_config.get("micro_batch_size", 1)
+        logger.info(f"Setting micro batching size: {self.handle.micro_batch_size}")
+
         try:
             ipex._C.disable_jit_linear_repack()
             torch._C._jit_set_texpr_fuser_enabled(False)
@@ -79,9 +83,9 @@ class CodeGenHandler(BaseHandler, ABC):
 
         self.num_beams = 1 if self.greedy else 4
         self.generate_kwargs = dict(
-            do_sample=False, 
-            temperature=0.9, 
-            num_beams=self.num_beams, 
+            do_sample=False,
+            temperature=0.9,
+            num_beams=self.num_beams,
             max_new_tokens=self.max_new_tokens,
             min_new_tokens=self.max_new_tokens
         )
@@ -98,13 +102,19 @@ class CodeGenHandler(BaseHandler, ABC):
                                                                trust_remote_code=True, token=access_token)
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True, token=access_token)
+        self.output_streamer = TextIteratorStreamerBatch(
+            self.tokenizer,
+            batch_size=self.handle.micro_batch_size,
+            skip_special_tokens=True,
+        )
         logger.info("Data type of the model: %s", self.user_model.dtype)
-        
+
         self.user_model = self.user_model.to(memory_format=torch.channels_last)
         self.user_model.eval()
 
         if self.ipex_weight_only_quantization:
-            weight_dtype = torch.quint4x2 if self.woq_dtype == "INT4" else torch.qint8
+            from intel_extension_for_pytorch.quantization import WoqWeightDtype
+            weight_dtype = WoqWeightDtype.INT4 if self.woq_dtype == "INT4" else WoqWeightDtype.INT8
 
             if self.lowp_mode == "INT8":
                 lowp_mode = ipex.quantization.WoqLowpMode.INT8
@@ -155,7 +165,7 @@ class CodeGenHandler(BaseHandler, ABC):
                 if not hasattr(self.user_model.config, "token_latency"):
                     self.user_model.config.token_latency = True
 
-            # set min token count for exact number of token generation    
+            # set min token count for exact number of token generation
             benchmark_generate_kwargs = dict(do_sample=False, temperature=0.9, num_beams=self.num_beams, max_new_tokens=self.max_new_tokens, min_new_tokens=self.max_new_tokens)
             import time
             total_time = 0.0
@@ -177,7 +187,7 @@ class CodeGenHandler(BaseHandler, ABC):
                     tic = time.time()
                     output = self.user_model.generate(input_ids, **benchmark_generate_kwargs)
                     gen_ids = output[0] if self.token_latency else output
-                    gen_text = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
+                    _ = self.tokenizer.decode(gen_ids[0], skip_special_tokens=True)
                     toc = time.time()
 
                     logger.info("Iteration: %d, Time: %.6f sec" % (i, toc - tic))
@@ -236,7 +246,7 @@ class CodeGenHandler(BaseHandler, ABC):
 
             input_ids = inputs["input_ids"]
             attention_mask = inputs["attention_mask"]
-            # making a batch out of the recieved requests
+            # making a batch out of the received requests
             if input_ids.shape is not None:
                 if input_ids_batch is None:
                     input_ids_batch = input_ids
@@ -248,19 +258,46 @@ class CodeGenHandler(BaseHandler, ABC):
 
     def inference(self, input_batch):
         input_ids_batch, attention_mask_batch = input_batch
-        inferences = []
+
+        self.generate_kwargs["streamer"] = self.output_streamer
+        self.generate_kwargs["inputs"] = input_ids_batch
+        self.generate_kwargs["attention_mask"] = attention_mask_batch
+
+        thread = Thread(target=self.user_model.generate, kwargs=self.generate_kwargs)
+        thread.start()
 
         with torch.inference_mode(), torch.no_grad(), torch.autocast(
             device_type="cpu",
             enabled=self.amp_enabled,
             dtype=self.amp_dtype
         ):
-            outputs = self.user_model.generate(input_ids_batch, attention_mask=attention_mask_batch, **self.generate_kwargs)
-            for output in outputs:
-                inferences.append(self.tokenizer.decode(output, skip_special_tokens=True))
+            micro_batch_idx = self.handle.get_micro_batch_idx()
+            micro_batch_req_id_map = self.get_micro_batch_req_id_map(micro_batch_idx)
+            for new_text in self.output_streamer:
+                send_intermediate_predict_response(
+                    new_text[: len(micro_batch_req_id_map)],
+                    micro_batch_req_id_map,
+                    "Intermediate Prediction success",
+                    200,
+                    self.context,
+                )
 
-        return inferences
+            thread.join()
+
+            return [""] * len(micro_batch_req_id_map)
 
     def postprocess(self, inference_output):
-        print(f"Generated output: {inference_output}")
+        logger.info(f"Generated output: {inference_output}")
         return inference_output
+
+    def get_micro_batch_req_id_map(self, micro_batch_idx: int):
+        start_idx = micro_batch_idx * self.handle.micro_batch_size
+        micro_batch_req_id_map = {
+            index: self.context.request_ids[batch_index]
+            for index, batch_index in enumerate(
+                range(start_idx, start_idx + self.handle.micro_batch_size)
+            )
+            if batch_index in self.context.request_ids
+        }
+
+        return micro_batch_req_id_map
